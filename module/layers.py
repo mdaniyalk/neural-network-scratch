@@ -62,6 +62,184 @@ class Dense:
         self.biases = biases
 
 
+# LSTM
+class LSTM(Dense):
+    def __init__(self, input_size, hidden_size):
+        # Call the super constructor to initialize the weights and biases
+        super().__init__(input_size + hidden_size, 4 * hidden_size)
+        self.hidden_size = hidden_size
+
+    def forward(self, inputs, state):
+        # Concatenate the input and previous hidden state
+        concatenated = np.concatenate([inputs, state], axis=1)
+        # Call the forward method of the super class with the concatenated input
+        super().forward(concatenated, training=True)
+        # Split the output into four parts for the input gate, forget gate,
+        # output gate, and cell state update
+        self.ig, self.fg, self.og, self.cu = np.split(self.output, 4, axis=1)
+        # Apply sigmoid and tanh activations to the parts
+        self.ig = 1 / (1 + np.exp(-self.ig))
+        self.fg = 1 / (1 + np.exp(-self.fg))
+        self.og = 1 / (1 + np.exp(-self.og))
+        self.cu = np.tanh(self.cu)
+        # Compute the new cell state and output
+        self.c = self.fg * state + self.ig * self.cu
+        self.h = self.og * np.tanh(self.c)
+        # Return the output and new cell state as a tuple
+        return self.h, self.c
+
+    def backward(self, dh, dc):
+        # Compute the gradients of the output and cell state with respect to the loss
+        dho = dh * np.tanh(self.c)
+        dc = dc + dh * self.og * (1 - np.tanh(self.c) ** 2)
+        # Compute the gradients of the input gate, forget gate, output gate, and cell state update
+        dcu = dc * self.ig * (1 - self.cu ** 2)
+        dig = dc * self.cu * self.ig * (1 - self.ig)
+        dfg = dc * self.fg * (1 - self.fg)
+        dog = dho * np.tanh(self.c) * self.og * (1 - self.og)
+        # Concatenate the gradients and backpropagate through the super class
+        gradients = np.concatenate([dig, dfg, dog, dcu], axis=1)
+        super().backward(gradients)
+        # Return the gradients with respect to the input and previous hidden state
+        dconcat = self.dinputs
+        dstate = dconcat[:, self.input_size:]
+        dinputs = dconcat[:, :self.input_size]
+        return dinputs, dstate
+
+    def get_parameters(self):
+        return self.weights, self.biases
+
+
+# GRU
+class GRU(Dense):
+    
+    def __init__(self, n_inputs, n_neurons,
+                 weight_regularizer_l1=0, weight_regularizer_l2=0,
+                 bias_regularizer_l1=0, bias_regularizer_l2=0):
+        super().__init__(n_inputs + n_neurons, 3 * n_neurons,
+                         weight_regularizer_l1, weight_regularizer_l2,
+                         bias_regularizer_l1, bias_regularizer_l2)
+        self.n_neurons = n_neurons
+    
+    def forward(self, inputs, training):
+        prev_hidden = inputs[1]
+        concat = np.concatenate((inputs[0], prev_hidden), axis=1)
+        super().forward(concat, training)
+        self.output = self._activation(self.output)
+        self.update_gate, self.reset_gate, self.hidden_state = np.split(self.output,
+                                                                        3,
+                                                                        axis=1)
+        self.new_hidden_state = self.update_gate * prev_hidden + (1 - self.update_gate) * self.hidden_state
+    
+    def backward(self, dvalues):
+        dprev_hidden = dvalues
+        dupdate_gate = self.hidden_state * dprev_hidden
+        dhidden_state = self.update_gate * dprev_hidden
+        dreset_gate = self.new_hidden_state * dhidden_state
+        dconcat = np.concatenate((self.inputs[0], self.inputs[1]), axis=1)
+        self.dinputs = np.zeros_like(dconcat)
+        self.dinputs[:, :self.n_inputs] = np.dot(dhidden_state * (1 - self.update_gate),
+                                                  self.weights[:self.n_inputs].T)
+        self.dinputs[:, self.n_inputs:] = np.dot(dhidden_state * self.update_gate,
+                                                 self.weights[self.n_inputs:].T)
+        self.dinputs += np.dot(dupdate_gate * self.update_gate * (1 - self.update_gate),
+                               self.weights[:self.n_inputs].T)
+        self.dinputs += np.dot(dreset_gate * self.reset_gate * (1 - self.reset_gate),
+                               self.weights[:self.n_inputs].T)
+        self.dweights[:self.n_inputs] = np.dot(self.inputs[0].T,
+                                                dhidden_state * (1 - self.update_gate))
+        self.dweights[self.n_inputs:] = np.dot(self.inputs[0].T,
+                                               dhidden_state * self.update_gate)
+        self.dweights[:self.n_inputs] += np.dot(self.inputs[0].T,
+                                                 dupdate_gate * self.update_gate * (1 - self.update_gate))
+        self.dweights[:self.n_inputs] += np.dot(self.inputs[0].T,
+                                                 dreset_gate * self.reset_gate * (1 - self.reset_gate))
+        self.dbiases = np.sum(dhidden_state * (1 - self.update_gate), axis=0, keepdims=True)
+        self.dbiases += np.sum(dhidden_state * self.update_gate, axis=0, keepdims=True)
+        self.dbiases += np.sum(dupdate_gate * self.update_gate * (1 - self.update_gate),
+                                axis=0, keepdims=True)
+        self.dbiases += np.sum(dreset_gate * self.reset_gate * (1 - self.reset_gate),
+                                axis=0, keepdims=True)
+        super().backward(self.dinputs)
+
+
+
+# Conv1D
+class Conv1D(Dense):
+    def __init__(self, n_inputs, n_filters, filter_size, 
+                 weight_regularizer_l1=0, weight_regularizer_l2=0,
+                 bias_regularizer_l1=0, bias_regularizer_l2=0):
+        # Initialize weights and biases
+        self.weights = 0.01 * np.random.randn(filter_size, n_inputs, n_filters)
+        self.biases = np.zeros((1, 1, n_filters))
+        # Set regularization strength
+        self.weight_regularizer_l1 = weight_regularizer_l1
+        self.weight_regularizer_l2 = weight_regularizer_l2
+        self.bias_regularizer_l1 = bias_regularizer_l1
+        self.bias_regularizer_l2 = bias_regularizer_l2
+        self.filter_size = filter_size
+
+    def forward(self, inputs, training):
+        # Remember input values
+        self.inputs = inputs
+        batch_size, n_inputs, sequence_length = inputs.shape
+
+        # Pad the inputs for valid convolution
+        padding = self.filter_size - 1
+        inputs_padded = np.pad(inputs, ((0,0), (padding,0), (0,0)), mode='constant')
+
+        # Perform convolution
+        output_shape = (batch_size, sequence_length, self.weights.shape[2])
+        output = np.zeros(output_shape)
+        for i in range(sequence_length):
+            input_window = inputs_padded[:, i:i+self.filter_size, :]
+            output[:, i, :] = np.dot(input_window, self.weights) + self.biases
+
+        # Store output values
+        self.output = output
+
+    def backward(self, dvalues):
+        # Gradients on parameters
+        batch_size, sequence_length, n_filters = dvalues.shape
+        self.dbiases = np.sum(dvalues, axis=(0, 1), keepdims=True)
+        self.dweights = np.zeros_like(self.weights)
+        inputs_padded = np.pad(self.inputs, ((0,0), (self.filter_size-1,0), (0,0)), mode='constant')
+        for i in range(sequence_length):
+            input_window = inputs_padded[:, i:i+self.filter_size, :]
+            self.dweights += np.dot(input_window.T, dvalues[:, i, :])
+        self.dinputs = np.zeros_like(self.inputs)
+        for i in range(sequence_length):
+            input_window = inputs_padded[:, i:i+self.filter_size, :]
+            self.dinputs[:, :, i:i+self.filter_size] += np.dot(dvalues[:, i, :], self.weights.T)
+
+        # Gradients on regularization
+        # L1 on weights
+        if self.weight_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.weights)
+            dL1[self.weights < 0] = -1
+            self.dweights += self.weight_regularizer_l1 * dL1
+        # L2 on weights
+        if self.weight_regularizer_l2 > 0:
+            self.dweights += 2 * self.weight_regularizer_l2 * \
+                             self.weights
+        # L1 on biases
+        if self.bias_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.biases)
+            dL1[self.biases < 0] = -1
+            self.dbiases += self.bias_regularizer_l1 * dL1
+        # L2 on biases
+        if self.bias_regularizer_l2 > 0:
+            self.dbiases += 2 * self.bias_regularizer_l2 * \
+                            self.biases
+
+    def get_parameters(self):
+        return self.weights, self.biases
+
+    def set_parameters(self, weights, biases):
+        self.weights = weights
+        self.biases = biases
+
+
 # Dropout
 class Dropout:
 
