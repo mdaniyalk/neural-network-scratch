@@ -9,8 +9,18 @@
 6. Add documentation:
     - [] layers 
     - [x] activations
+<<<<<<< HEAD
     - [] accuracy 
     - [] losses 
     - [] model 
     - [] optimizer
     - [x] utils  
+=======
+    - [ ] accuracy 
+    - [ ] losses 
+    - [ ] model 
+    - [ ] optimizer
+    - [x] utils  
+
+    
+>>>>>>> 3f12d44 (fix conflict)
