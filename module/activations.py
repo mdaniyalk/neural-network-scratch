@@ -1,109 +1,196 @@
 import numpy as np
 
 
-# ReLU activation
-class ReLU:
 
-    # Forward pass
+class ReLU:
+    """
+    Rectified Linear Unit (ReLU) activation function.
+    """
+
     def forward(self, inputs, training):
-        # Remember input values
+        """
+        Forward pass of ReLU activation function.
+
+        Args:
+        inputs (ndarray): A numpy array of input values.
+        training: A boolean flag indicating whether the network is in training mode.
+
+        Returns:
+        None
+        """
         self.inputs = inputs
-        # Calculate output values from inputs
         self.output = np.maximum(0, inputs)
 
-    # Backward pass
     def backward(self, dvalues):
-        # Since we need to modify original variable,
-        # let's make a copy of values first
-        self.dinputs = dvalues.copy()
+        """
+        Backward pass of ReLU activation function.
 
-        # Zero gradient where input values were negative
+        Args:
+        dvalues (ndarray): A numpy array of gradient values.
+
+        Returns:
+        None
+        """
+        self.dinputs = dvalues.copy()
         self.dinputs[self.inputs <= 0] = 0
 
-    # Calculate predictions for outputs
     def predictions(self, outputs):
+        """
+        Returns predictions for outputs.
+
+        Args:
+        outputs (ndarray): A numpy array of output values.
+
+        Returns:
+        outputs (ndarray): A numpy array of output values.
+        """
         return outputs
 
 
 
-# Softmax activation
 class Softmax:
-
-    # Forward pass
+    """
+    Softmax activation function.
+    """
     def forward(self, inputs, training):
-        # Remember input values
+        """
+        Calculates the forward pass of the Softmax function.
+
+        Args:
+        inputs (ndarray): A numpy array of input values to the Softmax function.
+        training: A boolean flag indicating if the network is training or testing.
+
+        Returns:
+        None
+        """
         self.inputs = inputs
 
-        # Get unnormalized probabilities
         exp_values = np.exp(inputs - np.max(inputs, axis=1,
                                             keepdims=True))
-        # Normalize them for each sample
+
         probabilities = exp_values / np.sum(exp_values, axis=1,
                                             keepdims=True)
 
         self.output = probabilities
 
-    # Backward pass
     def backward(self, dvalues):
+        """
+        Calculates the backward pass of the Softmax function.
 
-        # Create uninitialized array
+        Args:
+        dvalues (ndarray): A numpy array of derivative values.
+
+        Returns:
+        None
+        """
         self.dinputs = np.empty_like(dvalues)
 
-        # Enumerate outputs and gradients
         for index, (single_output, single_dvalues) in \
                 enumerate(zip(self.output, dvalues)):
-            # Flatten output array
             single_output = single_output.reshape(-1, 1)
-            # Calculate Jacobian matrix of the output
             jacobian_matrix = np.diagflat(single_output) - \
                               np.dot(single_output, single_output.T)
-            # Calculate sample-wise gradient
-            # and add it to the array of sample gradients
             self.dinputs[index] = np.dot(jacobian_matrix,
                                          single_dvalues)
 
-    # Calculate predictions for outputs
     def predictions(self, outputs):
+        """
+        Calculates the predictions for the outputs of the Softmax function.
+
+        Args:
+        outputs (ndarray): A numpy array of outputs from the Softmax function.
+
+        Returns:
+        outputs (ndarray): A numpy array of output values.
+        """
         return np.argmax(outputs, axis=1)
 
 
 
-# Sigmoid activation
 class Sigmoid:
-
-    # Forward pass
+    """
+    Sigmoid activation function class.
+    """
     def forward(self, inputs, training):
-        # Save input and calculate/save output
-        # of the sigmoid function
+        """
+        Calculates the forward pass of the Sigmoid function.
+
+        Args:
+        inputs (ndarray): A numpy array of input values to the Sigmoid function.
+        training: A boolean flag indicating if the network is training or testing.
+
+        Returns:
+        None
+        """
         self.inputs = inputs
         self.output = 1 / (1 + np.exp(-inputs))
 
-    # Backward pass
     def backward(self, dvalues):
-        # Derivative - calculates from output of the sigmoid function
+        """
+        Calculates the backward pass of the Sigmoid function.
+
+        Args:
+        dvalues (ndarray): A numpy array of derivative values.
+
+        Returns:
+        None
+        """
         self.dinputs = dvalues * (1 - self.output) * self.output
 
-    # Calculate predictions for outputs
     def predictions(self, outputs):
+        """
+        Calculates the predictions for the outputs of the Sigmoid function.
+
+        Args:
+        outputs (ndarray): A numpy array of outputs from the Sigmoid function.
+
+        Returns:
+        outputs (ndarray): A numpy array of output values.
+        """
         return (outputs > 0.5) * 1
 
 
 # Linear activation
 class Linear:
-
-    # Forward pass
+    """
+    Linear activation function class.
+    """
     def forward(self, inputs, training):
-        # Just remember values
+        """
+        Calculates the forward pass of the Linear function.
+
+        Args:
+        inputs (ndarray): A numpy array of input values to the Linear function.
+        training: A boolean flag indicating if the network is training or testing.
+
+        Returns:
+        None
+        """
         self.inputs = inputs
         self.output = inputs
 
-    # Backward pass
     def backward(self, dvalues):
-        # derivative is 1, 1 * dvalues = dvalues - the chain rule
+        """
+        Calculates the backward pass of the Linear function.
+
+        Args:
+        dvalues (ndarray): A numpy array of derivative values.
+
+        Returns:
+        None
+        """
         self.dinputs = dvalues.copy()
 
-    # Calculate predictions for outputs
     def predictions(self, outputs):
+        """
+        Calculates the predictions for the outputs of the Linear function.
+
+        Args:
+        outputs (ndarray): A numpy array of outputs from the Linear function.
+
+        Returns:
+        outputs (ndarray): A numpy array of output values.
+        """
         return outputs
 
 
