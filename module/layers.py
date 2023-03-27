@@ -110,57 +110,6 @@ class LSTM(Dense):
         return self.weights, self.biases
 
 
-# GRU
-class GRU(Dense):
-    
-    def __init__(self, n_inputs, n_neurons,
-                 weight_regularizer_l1=0, weight_regularizer_l2=0,
-                 bias_regularizer_l1=0, bias_regularizer_l2=0):
-        super().__init__(n_inputs + n_neurons, 3 * n_neurons,
-                         weight_regularizer_l1, weight_regularizer_l2,
-                         bias_regularizer_l1, bias_regularizer_l2)
-        self.n_neurons = n_neurons
-    
-    def forward(self, inputs, training):
-        prev_hidden = inputs[1]
-        concat = np.concatenate((inputs[0], prev_hidden), axis=1)
-        super().forward(concat, training)
-        self.output = self._activation(self.output)
-        self.update_gate, self.reset_gate, self.hidden_state = np.split(self.output,
-                                                                        3,
-                                                                        axis=1)
-        self.new_hidden_state = self.update_gate * prev_hidden + (1 - self.update_gate) * self.hidden_state
-    
-    def backward(self, dvalues):
-        dprev_hidden = dvalues
-        dupdate_gate = self.hidden_state * dprev_hidden
-        dhidden_state = self.update_gate * dprev_hidden
-        dreset_gate = self.new_hidden_state * dhidden_state
-        dconcat = np.concatenate((self.inputs[0], self.inputs[1]), axis=1)
-        self.dinputs = np.zeros_like(dconcat)
-        self.dinputs[:, :self.n_inputs] = np.dot(dhidden_state * (1 - self.update_gate),
-                                                  self.weights[:self.n_inputs].T)
-        self.dinputs[:, self.n_inputs:] = np.dot(dhidden_state * self.update_gate,
-                                                 self.weights[self.n_inputs:].T)
-        self.dinputs += np.dot(dupdate_gate * self.update_gate * (1 - self.update_gate),
-                               self.weights[:self.n_inputs].T)
-        self.dinputs += np.dot(dreset_gate * self.reset_gate * (1 - self.reset_gate),
-                               self.weights[:self.n_inputs].T)
-        self.dweights[:self.n_inputs] = np.dot(self.inputs[0].T,
-                                                dhidden_state * (1 - self.update_gate))
-        self.dweights[self.n_inputs:] = np.dot(self.inputs[0].T,
-                                               dhidden_state * self.update_gate)
-        self.dweights[:self.n_inputs] += np.dot(self.inputs[0].T,
-                                                 dupdate_gate * self.update_gate * (1 - self.update_gate))
-        self.dweights[:self.n_inputs] += np.dot(self.inputs[0].T,
-                                                 dreset_gate * self.reset_gate * (1 - self.reset_gate))
-        self.dbiases = np.sum(dhidden_state * (1 - self.update_gate), axis=0, keepdims=True)
-        self.dbiases += np.sum(dhidden_state * self.update_gate, axis=0, keepdims=True)
-        self.dbiases += np.sum(dupdate_gate * self.update_gate * (1 - self.update_gate),
-                                axis=0, keepdims=True)
-        self.dbiases += np.sum(dreset_gate * self.reset_gate * (1 - self.reset_gate),
-                                axis=0, keepdims=True)
-        super().backward(self.dinputs)
 
 
 

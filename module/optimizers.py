@@ -2,7 +2,7 @@ import numpy as np
 
 
 # SGD optimizer
-class Optimizer_SGD:
+class SGD:
 
     # Initialize optimizer - set settings,
     # learning rate of 1. is default for this optimizer
@@ -66,7 +66,7 @@ class Optimizer_SGD:
 
 
 # Adagrad optimizer
-class Optimizer_Adagrad:
+class Adagrad:
 
     # Initialize optimizer - set settings
     def __init__(self, learning_rate=1., decay=0., epsilon=1e-7):
@@ -111,7 +111,7 @@ class Optimizer_Adagrad:
 
 
 # RMSprop optimizer
-class Optimizer_RMSprop:
+class RMSprop:
 
     # Initialize optimizer - set settings
     def __init__(self, learning_rate=0.001, decay=0., epsilon=1e-7,
@@ -160,7 +160,7 @@ class Optimizer_RMSprop:
 
 
 # Adam optimizer
-class Optimizer_Adam:
+class Adam:
 
     # Initialize optimizer - set settings
     def __init__(self, learning_rate=0.001, decay=0., epsilon=1e-7,

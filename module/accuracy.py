@@ -38,7 +38,7 @@ class Accuracy:
 
 
 # Accuracy calculation for classification model
-class Accuracy_Categorical(Accuracy):
+class Categorical_Accuracy(Accuracy):
 
     def __init__(self, *, binary=False):
         # Binary mode?
@@ -56,7 +56,7 @@ class Accuracy_Categorical(Accuracy):
 
 
 # Accuracy calculation for regression model
-class Accuracy_Regression(Accuracy):
+class Regression_Accuracy(Accuracy):
 
     def __init__(self):
         # Create precision property

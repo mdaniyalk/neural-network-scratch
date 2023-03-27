@@ -2,9 +2,9 @@ import numpy as np
 import pickle
 import copy
 
-from layers import Input
-from activations import Softmax
-from losses import CategoricalCrossentropy, Softmax_Loss_CategoricalCrossentropy
+from .layers import Input
+from .activations import Softmax
+from .losses import CategoricalCrossentropy, Softmax_Loss_CategoricalCrossentropy
 
 # Model class
 class Model:
