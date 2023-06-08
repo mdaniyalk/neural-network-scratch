@@ -5,12 +5,12 @@
 2. Add huber loss
 3. Add metrics
 4. Add parallelism using joblib and numba
-5. Check the LSTM, and Conv1D layers
+5. Check the LSTM layers
 6. Add documentation:
-    - [ ] layers 
+    - [x] layers 
     - [x] activations
-    - [ ] accuracy 
-    - [ ] losses 
+    - [x] accuracy 
+    - [x] losses 
     - [ ] model 
-    - [ ] optimizer
+    - [x] optimizer
     - [x] utils  
