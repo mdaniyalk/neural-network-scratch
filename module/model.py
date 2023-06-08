@@ -1,6 +1,8 @@
 import numpy as np
 import pickle
 import copy
+from tqdm import tqdm
+
 
 from .layers import Input
 from .activations import Softmax
@@ -116,15 +118,12 @@ class Model:
         # Main training loop
         for epoch in range(1, epochs+1):
 
-            # Print epoch number
-            print(f'epoch: {epoch}')
-
             # Reset accumulated values in loss and accuracy objects
             self.loss.new_pass()
             self.accuracy.new_pass()
 
             # Iterate over steps
-            for step in range(train_steps):
+            for step in tqdm(range(train_steps), desc=f"Training Epoch: {epoch}/{epochs}"):
 
                 # If batch size is not set -
                 # train using one step and full dataset

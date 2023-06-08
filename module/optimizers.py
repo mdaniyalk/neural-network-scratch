@@ -223,9 +223,11 @@ class Adam:
                          (np.sqrt(weight_cache_corrected) +
                              self.epsilon)
         layer.biases += -self.current_learning_rate * \
-                         bias_momentums_corrected / \
-                         (np.sqrt(bias_cache_corrected) +
-                             self.epsilon)
+                bias_momentums_corrected.reshape(layer.biases.shape) / \
+                (np.sqrt(bias_cache_corrected.reshape(layer.biases.shape)) + self.epsilon)
+
+
+
 
     # Call once after any parameter updates
     def post_update_params(self):
