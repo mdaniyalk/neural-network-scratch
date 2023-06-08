@@ -155,10 +155,13 @@ class Conv1D(Dense):
         self.stride = stride
 
     def forward(self, inputs, training):
+        if len(inputs.shape) == 2:
+            inputs = np.expand_dims(inputs, axis=-1)
         # Remember input values
         self.inputs = inputs
 
         # Calculate output shape
+         
         batch_size, n_inputs, sequence_length = inputs.shape
         output_length = (n_inputs - self.filter_size) // self.stride + 1
 
@@ -186,15 +189,30 @@ class Conv1D(Dense):
 
         self.dweights = np.zeros_like(self.weights)
         for i in range(self.filter_size):
-            self.dweights[:, i] = np.sum(self.inputs[:, i:i + output_length, 0] * dvalues_reshaped, axis=(0, 2))
+            try:
+                self.dweights[:, i] = np.sum(self.inputs[:, i:i + output_length, 0] * dvalues_reshaped, axis=(0, 2))
+            except:
+                self.dweights[:, i] = np.sum(np.transpose(np.expand_dims(self.inputs[:, i:i + output_length, 0], axis=-1), (0, 2, 1)) * dvalues_reshaped, axis=(0,2))
+            else:
+                self.dweights[:, i] = np.sum(self.inputs[:, i:i + output_length, 0] * dvalues_reshaped, axis=(0, 2))
 
         # Calculate gradients on input values
         self.dinputs = np.zeros_like(self.inputs, dtype=np.float64)  # Explicitly set dtype to float64
         for i in range(self.filter_size):
             weight_reshaped = np.expand_dims(self.weights[:, i], axis=1)
-            self.dinputs[:, i:i + output_length, 0] += np.sum(
-                dvalues_reshaped * np.expand_dims(weight_reshaped, axis=2), axis=1
-            )
+            try:
+                self.dinputs[:, i:i + output_length, 0] += np.sum(
+                    dvalues_reshaped * np.expand_dims(weight_reshaped, axis=2), axis=1
+                )
+        
+            except:
+                self.dinputs[:, i:i + output_length, 0] += np.sum(dvalues_reshaped * weight_reshaped, axis=1)
+
+
+            else:
+                self.dinputs[:, i:i + output_length, 0] += np.sum(
+                    dvalues_reshaped * np.expand_dims(weight_reshaped, axis=2), axis=1
+                )
         self.dinputs = self.dinputs
 
     def get_parameters(self):

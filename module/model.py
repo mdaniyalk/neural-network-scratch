@@ -2,7 +2,7 @@ import numpy as np
 import pickle
 import copy
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
 
 from .layers import Input
 from .activations import Softmax
@@ -16,6 +16,8 @@ class Model:
         self.layers = []
         # Softmax classifier's output object
         self.softmax_classifier_output = None
+        self.history = {'loss': [],
+                        'accuracy': [],}
 
     # Add objects to the model
     def add(self, layer):
@@ -114,6 +116,13 @@ class Model:
             if train_steps * batch_size < len(X):
                 train_steps += 1
 
+        tmp_loss = []
+        tmp_acc = []
+        if validation_data is not None:
+            tmp_val_loss = []
+            tmp_val_acc = []
+        else:
+            self.has_val_data = False
 
         # Main training loop
         for epoch in range(1, epochs+1):
@@ -176,7 +185,8 @@ class Model:
                     include_regularization=True)
             epoch_loss = epoch_data_loss + epoch_regularization_loss
             epoch_accuracy = self.accuracy.calculate_accumulated()
-
+            tmp_loss.append(epoch_loss)
+            tmp_acc.append(epoch_accuracy)
             print(f'training, ' +
                   f'acc: {epoch_accuracy:.3f}, ' +
                   f'loss: {epoch_loss:.3f} (' +
@@ -186,13 +196,24 @@ class Model:
 
             # If there is the validation data
             if validation_data is not None:
-
+                
                 # Evaluate the model:
-                self.evaluate(*validation_data,
-                              batch_size=batch_size)
+                val_acc, val_loss = self.evaluate(*validation_data,
+                                                  batch_size=batch_size,
+                                                  return_data=True)
+                tmp_val_loss.append(val_loss)
+                tmp_val_acc.append(val_acc)
+                
+                
+        self.history['loss'] = tmp_loss
+        self.history['accuracy'] = tmp_acc
+        if validation_data is not None:
+            self.history['val_loss'] = tmp_val_loss
+            self.history['val_accuracy'] = tmp_val_acc
+            self.has_val_data = True
 
     # Evaluates the model using passed-in dataset
-    def evaluate(self, X_val, y_val, *, batch_size=None):
+    def evaluate(self, X_val, y_val, *, batch_size=None, return_data=False):
 
         # Default value if batch size is not being set
         validation_steps = 1
@@ -249,6 +270,25 @@ class Model:
         print(f'validation, ' +
               f'acc: {validation_accuracy:.3f}, ' +
               f'loss: {validation_loss:.3f}')
+        if return_data:
+            return validation_accuracy, validation_loss
+
+    def plot_history(self):
+        fig, axes = plt.subplots(nrows=1, ncols=2)
+        len_data = [i for i in range(len(self.history['loss']))]
+        axes[0].plot(len_data, self.history['loss'], color='blue', label='loss')
+        if self.has_val_data:
+            axes[0].plot(len_data, self.history['val_loss'], color='red', label='val_loss')
+        axes[0].set_title('Loss')
+        axes[0].legend()
+
+        axes[1].plot(len_data, self.history['accuracy'], color='blue', label='accuracy')
+        if self.has_val_data:
+            axes[1].plot(len_data, self.history['val_accuracy'], color='red', label='val_accuracy')
+        axes[1].set_title('Accuracy')
+        axes[1].legend()
+
+        plt.show()
 
     # Predicts on the samples
     def predict(self, X, *, batch_size=None):
